@@ -1,0 +1,4 @@
+# Repos propios montados dentro de Open edX en modo dev, relativos a la raíz del repo.
+# Ejemplo: src/plugin-stripe
+# src/plugin-stripe
+# src/frontend-app-learning

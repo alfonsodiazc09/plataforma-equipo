@@ -1,0 +1,4 @@
+# Plugins de Tutor que se activan en todas las máquinas (uno por línea).
+# Los de la comunidad van aquí; los propios van en tutor-plugins/.
+mfe
+indigo

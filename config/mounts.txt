@@ -2,3 +2,4 @@
 # Ejemplo: src/plugin-stripe
 # src/plugin-stripe
 # src/frontend-app-learning
+src/openedx-course-payments

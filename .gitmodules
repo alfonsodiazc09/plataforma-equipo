@@ -1,0 +1,6 @@
+[submodule "src/openedx-course-payments"]
+	path = src/openedx-course-payments
+	url = git@github.com:erickdoevp/openedx-course-payments.git
+[submodule "src/front-campus"]
+	path = src/front-campus
+	url = git@github.com:erickdoevp/campus-web.git

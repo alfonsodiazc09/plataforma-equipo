@@ -6,6 +6,9 @@ DIR="${1:?Indica la carpeta: make restore BACKUP=backups/...}"
 read -r -p "Esto reemplaza los datos actuales de esta máquina con $DIR. ¿Continuar? [s/N] " ok
 [ "$ok" = "s" ] || { echo "Cancelado."; exit 1; }
 "$TUTOR" dev start -d mysql mongodb
+# Se borra la base completa para que no queden tablas que el respaldo no conoce;
+# después `do init` vuelve a crear las de los plugins nuevos.
+"$TUTOR" dev dc exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS openedx"'
 "$TUTOR" dev dc exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' < "$DIR/mysql.sql"
 "$TUTOR" dev dc exec -T mongodb mongorestore --drop --archive < "$DIR/mongodb.archive"
 "$TUTOR" dev do init

@@ -4,3 +4,6 @@ venv/
 .env*
 backups/
 __pycache__/
+
+# Archivos que crea Windows al copiar desde el Explorador a WSL
+*:Zone.Identifier

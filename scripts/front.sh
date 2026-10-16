@@ -10,4 +10,4 @@ node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(
 cd "$DIR"
 [ -d node_modules ] && [ node_modules -nt package-lock.json ] || npm ci
 echo "Sitio público en http://www.local.openedx.io:3000"
-exec npm run dev
+exec npm run dev -- --host 0.0.0.0

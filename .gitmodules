@@ -4,3 +4,6 @@
 [submodule "src/front-campus"]
 	path = src/front-campus
 	url = git@github.com:erickdoevp/campus-web.git
+[submodule "src/campus-cms"]
+	path = src/campus-cms
+	url = git@github.com:erickdoevp/campus-cms.git

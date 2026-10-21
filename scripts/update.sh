@@ -13,6 +13,7 @@ apply_mounts
 # Con 8 GB de RAM la construcción se queda sin memoria si la plataforma está encendida.
 "$TUTOR" dev stop
 "$TUTOR" images build openedx-dev
+"$TUTOR" dev dc build campus-cms
 "$TUTOR" dev start -d
 "$TUTOR" dev do init
 "$TUTOR" dev restart

@@ -6,6 +6,7 @@ Este repo define toda la plataforma: la versión de Tutor, los plugins, la confi
 | --- | --- | --- |
 | `src/openedx-course-payments` | Plugin de pagos con Stripe (Django) | `openedx-course-payments` (submódulo) |
 | `src/front-campus` | Sitio público Campus (Nuxt) | `front-campus` (submódulo) |
+| `src/campus-cms` | CMS del contador: cursos, precios y ventas (Django + DRF) | `campus-cms` (submódulo) |
 | `tutor-plugins/` | Plugins de Tutor del equipo | este repo |
 | `config/` | Plugins activos, montajes y configuración sin secretos | este repo |
 | `.env` | Tus llaves (Stripe). **Nunca se sube a Git** | solo en tu máquina |
@@ -15,6 +16,7 @@ Direcciones:
 - LMS: http://local.openedx.io:8000
 - Studio: http://studio.local.openedx.io:8001
 - Campus: http://www.local.openedx.io:3000
+- CMS (API): http://campus-cms.local.openedx.io:8010/api/health/
 
 ---
 
@@ -60,7 +62,7 @@ git clone --recurse-submodules https://github.com/TU_ORG/plataforma-equipo.git ~
 cd ~/plataforma-equipo
 ```
 
-Revisa que las dos carpetas tengan archivos: `ls src/openedx-course-payments src/front-campus`. Si salen vacías, corre `git submodule update --init --recursive`.
+Revisa que las tres carpetas tengan archivos: `ls src/openedx-course-payments src/front-campus src/campus-cms`. Si salen vacías, corre `git submodule update --init --recursive`.
 
 ### 1.3 Pon tus llaves
 
@@ -167,6 +169,9 @@ Con la plataforma encendida (`make start`) y Campus corriendo (`make front`):
 | Modelos del plugin (hay una migración nueva) | `make tutor ARGS="dev exec lms ./manage.py lms migrate"` |
 | Dependencias del plugin (`setup.py` o `pyproject.toml`) | `make update` |
 | El archivo de Tutor del plugin (`tutor/coursepayments.py`) | `make config` y luego `make restart` |
+| Código Python del CMS (`campus-cms`) | Nada, se recarga solo |
+| Modelos del CMS (hay una migración nueva) | `make tutor ARGS="dev exec campus-cms python manage.py migrate"` |
+| Dependencias del CMS (`requirements.txt` de `campus-cms`) | `make update` |
 | `config/tutor.env` o `.env` | `make config` |
 | `config/plugins.txt`, `config/mounts.txt`, `tutor-plugins/` o `requirements.txt` | `make update` |
 

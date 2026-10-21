@@ -4,9 +4,9 @@ Este repo define toda la plataforma: la versión de Tutor, los plugins, la confi
 
 | Carpeta | Qué es | Repo |
 | --- | --- | --- |
-| `src/openedx-course-payments` | Plugin de pagos con Stripe (Django) | `openedx-course-payments` (submódulo) |
+| `src/openedx-course-payments` | Plugin del LMS: solo entran quienes pagaron y las páginas de curso van a Campus (Django) | `openedx-course-payments` (submódulo) |
 | `src/front-campus` | Sitio público Campus (Nuxt) | `front-campus` (submódulo) |
-| `src/campus-cms` | CMS del contador: cursos, precios y ventas (Django + DRF) | `campus-cms` (submódulo) |
+| `src/campus-cms` | CMS del contador: cursos, precios y ventas; cobra con Stripe (Django + DRF) | `campus-cms` (submódulo) |
 | `tutor-plugins/` | Plugins de Tutor del equipo | este repo |
 | `config/` | Plugins activos, montajes y configuración sin secretos | este repo |
 | `.env` | Tus llaves (Stripe). **Nunca se sube a Git** | solo en tu máquina |
@@ -69,8 +69,8 @@ Revisa que las tres carpetas tengan archivos: `ls src/openedx-course-payments sr
 Crea el archivo `.env` en la raíz del repo (`nano .env`) con este contenido:
 
 ```bash
-COURSE_PAYMENTS_STRIPE_SECRET_KEY=sk_test_...    # solo llaves de prueba (sk_test_), nunca sk_live_
-COURSE_PAYMENTS_STRIPE_WEBHOOK_SECRET=whsec_...  # lo obtienes en el paso 1.6
+CAMPUS_CMS_STRIPE_SECRET_KEY=sk_test_...    # solo llaves de prueba (sk_test_), nunca sk_live_
+CAMPUS_CMS_STRIPE_WEBHOOK_SECRET=whsec_...  # lo obtienes en el paso 1.6
 ```
 
 ### 1.4 Instala la plataforma
@@ -98,7 +98,7 @@ cd ~/plataforma-equipo
 make stripe
 ```
 
-Copia el `whsec_...` que aparece, pégalo en `COURSE_PAYMENTS_STRIPE_WEBHOOK_SECRET` dentro de `.env` y corre `make config`. Solo se repite si el `whsec_` cambia.
+Copia el `whsec_...` que aparece, pégalo en `CAMPUS_CMS_STRIPE_WEBHOOK_SECRET` dentro de `.env` y corre `make config`. Solo se repite si el `whsec_` cambia. Los pagos los recibe el CMS (`campus-cms`).
 
 Listo: abre http://www.local.openedx.io:3000.
 
@@ -127,7 +127,7 @@ Al terminar: `Ctrl+C` en las terminales de `make front` y `make stripe`, y luego
 | Qué cambió | Qué corres |
 | --- | --- |
 | Cualquier cosa de `plataforma-equipo` (config, plugins, versión de Tutor, scripts) | `make update` |
-| El plugin de Stripe (`openedx-course-payments`), ya registrado en `plataforma-equipo` | `make update` |
+| El plugin del LMS (`openedx-course-payments`) o el CMS (`campus-cms`), ya registrados en `plataforma-equipo` | `make update` |
 | Solo Campus (`front-campus`), ya registrado en `plataforma-equipo` | `git pull && git submodule update --init --recursive`, y reinicia `make front` |
 | Alguien subió directo al repo `front-campus` o `openedx-course-payments` | Ver la sección siguiente: `make update` no lo trae solo |
 | No sé qué cambió | `make update` (siempre es seguro, solo tarda más) |
@@ -136,7 +136,7 @@ Al terminar: `Ctrl+C` en las terminales de `make front` y `make stripe`, y luego
 
 **Antes de `make update`**, sube lo que tengas a medias dentro de `src/`: actualizar los submódulos los regresa al commit que marca este repo.
 
-### Alguien subió cambios directo a `front-campus` o al plugin de Stripe
+### Alguien subió cambios directo a un submódulo (`front-campus`, `campus-cms` o el plugin)
 
 **`make update` NO trae esos cambios por sí solo.** Este repo guarda en qué commit está cada submódulo, y `make update` deja cada uno en ese commit guardado. Si alguien abre solo el repo `front-campus` u `openedx-course-payments` y hace push ahí, `plataforma-equipo` sigue apuntando al commit anterior.
 
@@ -165,7 +165,7 @@ Con la plataforma encendida (`make start`) y Campus corriendo (`make front`):
 | Páginas, componentes o estilos de Campus | Nada, el navegador se actualiza solo |
 | `nuxt.config.ts` o variables de entorno de Campus | `Ctrl+C` y `make front` |
 | `package.json` de Campus (nueva dependencia) | `Ctrl+C` y `make front` (instala solo) |
-| Código Python del plugin de Stripe (vistas, lógica, plantillas) | Nada, el LMS se recarga solo en unos segundos. Si no ves el cambio: `make restart` |
+| Código Python del plugin del LMS | Nada, el LMS se recarga solo en unos segundos. Si no ves el cambio: `make restart` |
 | Modelos del plugin (hay una migración nueva) | `make tutor ARGS="dev exec lms ./manage.py lms migrate"` |
 | Dependencias del plugin (`setup.py` o `pyproject.toml`) | `make update` |
 | El archivo de Tutor del plugin (`tutor/coursepayments.py`) | `make config` y luego `make restart` |
@@ -218,7 +218,7 @@ Todo cambio de plugins es un commit en este repo seguido de `make update`. Al ha
 
 ### Código propio que corre dentro de Open edX (app de Django)
 
-Así se agregó el plugin de Stripe; para otro son los mismos pasos. Conviene nombrar la carpeta con `openedx-` al inicio (por ejemplo `openedx-mi-plugin`), porque así te ahorras el paso 3.
+Así se agregó `openedx-course-payments`; para otro son los mismos pasos. Conviene nombrar la carpeta con `openedx-` al inicio (por ejemplo `openedx-mi-plugin`), porque así te ahorras el paso 3.
 
 1. **El código.** Agrega el repo como submódulo:
 
@@ -238,7 +238,7 @@ Así se agregó el plugin de Stripe; para otro son los mismos pasos. Conviene no
      hooks.Filters.MOUNTED_DIRECTORIES.add_item(("openedx", "mi-plugin"))
      ```
 
-   Si el plugin trae además su propio archivo de Tutor con ajustes (como `tutor/coursepayments.py` en el de Stripe), enlázalo en `tutor-plugins/` para que se active:
+   Si el plugin trae además su propio archivo de Tutor con ajustes (como `tutor/coursepayments.py` en `openedx-course-payments`), enlázalo en `tutor-plugins/` para que se active:
 
    ```bash
    ln -s ../src/openedx-mi-plugin/tutor/miplugin.py tutor-plugins/miplugin.py
@@ -272,7 +272,7 @@ Si además era un submódulo que ya no se usa: `git rm src/mi-plugin` y commit.
 | `make restart` | Reiniciar LMS y Studio |
 | `make config` | Aplicar cambios de `config/tutor.env` o `.env` |
 | `make front` | Levantar Campus |
-| `make stripe` | Recibir los webhooks de prueba de Stripe |
+| `make stripe` | Recibir en el CMS los webhooks de prueba de Stripe |
 | `make logs` | Ver los errores del LMS (`Ctrl+C` para salir) |
 | `make shell` | Consola de Django del LMS |
 | `make admin USER_NAME=... EMAIL=...` | Crear un superusuario |

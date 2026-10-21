@@ -4,3 +4,5 @@ source "$(dirname "$0")/common.sh"
 cd "$ROOT"
 apply_config
 "$TUTOR" dev restart lms
+# El CMS recibe su configuración como variables del contenedor: hay que recrearlo.
+"$TUTOR" dev start -d campus-cms

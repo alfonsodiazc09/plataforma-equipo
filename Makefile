@@ -47,7 +47,7 @@ config: ## Aplica cambios de config/tutor.env o .env y reinicia el LMS
 front: ## Levanta el sitio público (Nuxt) en http://www.local.openedx.io:3000
 	@scripts/front.sh
 
-stripe: ## Reenvía los webhooks de prueba de Stripe al LMS local
+stripe: ## Reenvía los webhooks de prueba de Stripe al CMS local
 	@scripts/stripe.sh
 
 .PHONY: help setup update start stop restart logs shell admin tutor backup restore doctor config front stripe

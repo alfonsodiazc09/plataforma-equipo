@@ -7,3 +7,9 @@ __pycache__/
 
 # Archivos que crea Windows al copiar desde el Explorador a WSL
 *:Zone.Identifier
+
+# macOS
+.DS_Store
+
+# Copias locales de MFEs de Open edX para probar cambios (no son parte de la plataforma)
+src/frontend-app-*/

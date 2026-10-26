@@ -9,9 +9,10 @@ VENV="$ROOT/venv"
 TUTOR="$VENV/bin/tutor"
 
 # Lee un archivo CLAVE=valor ignorando comentarios y líneas vacías.
+# También quita los comentarios al final de la línea (un # precedido de espacio), como en el README.
 read_kv() {
   [ -f "$1" ] || return 0
-  grep -vE '^[[:space:]]*(#|$)' "$1" || true
+  grep -vE '^[[:space:]]*(#|$)' "$1" | sed -E 's/[[:space:]]+#.*$//; s/[[:space:]]*$//' || true
 }
 
 read_list() {

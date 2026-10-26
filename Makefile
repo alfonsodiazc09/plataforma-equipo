@@ -38,7 +38,7 @@ admin: ## Crea un superusuario: make admin USER_NAME=admin EMAIL=tu@correo.com
 tutor: ## Ejecuta cualquier comando de Tutor de este proyecto: make tutor ARGS="config printvalue LMS_HOST"
 	@source scripts/common.sh && "$$TUTOR" $(ARGS)
 
-backup: ## Respalda usuarios, cursos y el CMS en backups/
+backup: ## Respalda usuarios, cursos, el CMS y los videos en backups/
 	@scripts/backup.sh
 
 restore: ## Restaura un respaldo: make restore BACKUP=backups/...

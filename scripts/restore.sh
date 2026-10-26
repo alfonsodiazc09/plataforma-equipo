@@ -17,6 +17,10 @@ for db in $DBS; do
 done
 "$TUTOR" dev dc exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' < "$DIR/mysql.sql"
 "$TUTOR" dev dc exec -T mongodb mongorestore --drop --archive < "$DIR/mongodb.archive"
+if [ -f "$DIR/videos.tar.gz" ]; then
+  mkdir -p src/front-campus/.data/videos
+  tar -xzf "$DIR/videos.tar.gz" -C src/front-campus/.data/videos
+fi
 "$TUTOR" dev do init
 "$TUTOR" dev restart
 echo "Restaurado."

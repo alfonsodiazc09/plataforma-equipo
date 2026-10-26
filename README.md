@@ -35,13 +35,14 @@ En `dev`, este repo apunta al `dev` de cada submódulo, y `.gitmodules` les pone
 
 | Quién | Dónde | Qué hace |
 | --- | --- | --- |
-| Contador | Campus → `/admin` | Crea el curso (el CMS lo da de alta en Open edX con sus autores), le pone precio e imagen, lo pone a la venta y ve las ventas |
-| Autor | Studio | Arma el contenido del curso que el contador creó (tiene rol de instructor en él) |
+| Contador | Campus → `/admin` | Crea el curso o toma uno que ya existe en Open edX (el CMS lo da de alta con sus autores), le pone precio e imagen, lo pone a la venta y ve las ventas |
+| Autor | Campus → `/admin` → *Contenido*, o Studio | Arma el temario: módulos, lecciones, videos y evaluaciones (tiene rol de instructor en el curso) |
 | Comprador | Campus | Compra con Stripe; el CMS recibe el pago y lo inscribe en Open edX |
 | Alumno | Open edX (MFE de aprendizaje) | Toma el curso; solo entra si lo pagó |
 
 - **El CMS (`campus-cms`) es la fuente de verdad de lo comercial:** qué cursos se venden, precios, imágenes, descripciones, órdenes y pagos. **Open edX** lo es del contenido, los usuarios, las inscripciones y el progreso. Se enlazan por la clave del curso (`course-v1:Campus+CODIGO+PERIODO`).
-- **Un curso creado directo en Studio no aparece en Campus ni se puede vender:** los cursos se crean desde `/admin/cursos`.
+- **Un curso creado directo en Studio no aparece en Campus ni se puede vender** hasta que lo tomas en `/admin/cursos/nuevo` → *Tomar un curso de Open edX* (debe ser de la organización del CMS, `Campus`).
+- **El contenido vive en Open edX** aunque se edite desde Campus: la pestaña *Contenido* llama a Studio con tu usuario, así que solo puedes editar los cursos donde eres autor (o si eres staff). Los videos que subes se guardan en el disco de Campus (`src/front-campus/.data/videos`).
 - **El plugin del LMS (`openedx-course-payments`)** solo deja entrar a quien pagó (o al equipo del curso) y manda las páginas "About" del LMS a Campus.
 - **Quién es contador** lo decide el CMS, no Open edX. Ser staff de Open edX no da acceso a `/admin`; el rol se da con `make tutor ARGS="dev exec campus-cms python manage.py contador <usuario>"`.
 
@@ -373,6 +374,18 @@ Nadie tiene contraseña en el CMS: se entra con el usuario de Open edX. El usuar
 
 El CMS habla con Open edX con una cuenta de servicio (`campus_cms_worker`) que crea `make setup` / `make update`. Si la borras o cambias el `CAMPUS_CMS_OAUTH2_CLIENT_SECRET`, corre `make update` para volver a crearla.
 
+### Crear un curso y armar su contenido
+
+1. En `/admin/cursos/nuevo` elige **Crear un curso nuevo** (o **Tomar un curso de Open edX** para uno que ya existe en Studio; conserva su contenido y alumnos). Deja tu usuario en *Autores*: así Studio te deja editar el contenido. Al guardar, el curso se crea en Open edX (tarda unos segundos) y se abre su pestaña *Contenido*.
+2. En la pestaña *Contenido* agrega **módulos** y, dentro, **lecciones**. En cada lección:
+   - **Videos:** arrástralos (MP4, WebM u Ogg, hasta 2 GB) o pega un enlace de YouTube o de un archivo de video.
+   - **Evaluaciones:** opción múltiple, casillas, lista desplegable, respuesta numérica y respuesta de texto se escriben ahí mismo (pregunta, respuestas, explicación, puntos, intentos y cuándo se muestra la respuesta). Arrastrar y soltar, respuesta abierta, expresión matemática, zona en imagen y evaluación con Python se agregan ahí y se configuran con *Editar en Studio*.
+   - **Calificación:** elige si la lección cuenta para la nota (Tarea, Laboratorio, Examen parcial, Examen final; los tipos y pesos se definen en Studio → Calificación) y su fecha límite.
+3. Pulsa **Publicar cambios** (arriba, junto al nombre del curso): hasta entonces los alumnos no ven lo nuevo.
+4. En *Información* sube la portada y escribe la descripción; en *Precio y venta* ponle precio y pulsa **Poner a la venta**.
+
+Los videos subidos solo se ven mientras `make front` está corriendo (los sirve Campus) y entran en `make backup`.
+
 ---
 
 ## 8. Todos los comandos
@@ -392,7 +405,7 @@ El CMS habla con Open edX con una cuenta de servicio (`campus_cms_worker`) que c
 | `make contador USER_NAME=...` | Dar el rol Contador (`REMOVE=1` para quitarlo) |
 | `make shell` | Consola de Django del LMS |
 | `make admin USER_NAME=... EMAIL=...` | Crear un superusuario |
-| `make backup` / `make restore BACKUP=backups/...` | Respaldar / restaurar usuarios, cursos y el CMS (cursos a la venta y ventas) |
+| `make backup` / `make restore BACKUP=backups/...` | Respaldar / restaurar usuarios, cursos, el CMS (cursos a la venta y ventas) y los videos subidos |
 | `make doctor` | Ver versiones y estado para comparar con otra máquina |
 | `make tutor ARGS="..."` | Cualquier comando de Tutor de este proyecto |
 
@@ -426,7 +439,10 @@ Para ver los logs del CMS: `make tutor ARGS="dev logs -f --tail=100 campus-cms"`
 | `/admin` dice "La administración no está disponible" | El CMS no responde. Revisa http://campus-cms.local.openedx.io:8010/api/health/ y los logs del CMS; normalmente basta `make tutor ARGS="dev restart campus-cms"` |
 | `/admin` dice "Esta sección es solo para contadores" | Tu usuario no tiene el rol en el CMS: `make tutor ARGS="dev exec campus-cms python manage.py contador <usuario>"` |
 | Pagué y la página se queda en "Estamos activando tu acceso" | El pago llegó pero Open edX no dio el acceso. En `/admin/ventas`, filtra por acceso "Error en Open edX", lee el motivo y usa "Reintentar" (o corre `reconcile_orders`). Si no llega nada a `/admin/ventas`, revisa que `make stripe` esté corriendo |
-| Un curso no aparece en Campus | Solo aparecen los cursos creados desde `/admin/cursos` y puestos a la venta; los creados directo en Studio no |
+| Un curso no aparece en Campus | Solo aparecen los cursos del CMS puestos a la venta. Uno creado directo en Studio se toma en `/admin/cursos/nuevo` → *Tomar un curso de Open edX* |
+| *Contenido* dice "Tu usuario no puede editar este curso en Open edX" | No eres autor del curso. Agrégate en Studio → Configuración → Equipo del curso (lo hace alguien del equipo o un staff) |
+| Al crear el curso dice "Open edX no creó el curso" | Studio tardó o falló. En la página del curso, pestaña *Precio y venta*, pulsa *Reintentar creación*: no se duplica |
+| Un video subido no se reproduce | Los sirve Campus: revisa que `make front` esté corriendo |
 | El menú de Open edX no cambia | Falta reconstruir la imagen de los MFE: `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev restart mfe"` |
 
 ---
@@ -435,7 +451,7 @@ Para ver los logs del CMS: `make tutor ARGS="dev logs -f --tail=100 campus-cms"`
 
 **Un proyecto a la vez.** Cada repo guarda su Tutor en `.tutor/`, así que los proyectos no se mezclan, pero usan los mismos puertos. Para cambiar: `make stop` en uno y `make start` en el otro.
 
-**Pasar datos a otra persona.** Un curso: Studio → Herramientas → Exportar, y el otro lo importa (pero no queda a la venta: eso vive en el CMS). Todo (usuarios, cursos, progreso, y del CMS los cursos a la venta, precios y ventas): `make backup`, comparte la carpeta de `backups/` y el otro corre `make restore BACKUP=backups/...`.
+**Pasar datos a otra persona.** Un curso: Studio → Herramientas → Exportar, y el otro lo importa (pero no queda a la venta: eso vive en el CMS). Todo (usuarios, cursos, progreso, del CMS los cursos a la venta, precios y ventas, y los videos subidos): `make backup`, comparte la carpeta de `backups/` y el otro corre `make restore BACKUP=backups/...`.
 
 **Traer una instalación vieja de `~/.local/share/tutor`:**
 

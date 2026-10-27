@@ -124,8 +124,10 @@ El menú de Campus en los encabezados de Open edX (`tutor-plugins/campusmenu.py`
 
 ```bash
 make tutor ARGS="images build mfe"
-make tutor ARGS="dev restart mfe"
+make tutor ARGS="dev start -d mfe"
 ```
+
+Usa `dev start -d mfe`, no `dev restart mfe`: `restart` reinicia el mismo contenedor con la imagen vieja, y `start` lo recrea con la nueva.
 
 ### 1.5 Levanta Campus (en otra terminal)
 
@@ -173,7 +175,7 @@ Al terminar: `Ctrl+C` en las terminales de `make front` y `make stripe`, y luego
 | El plugin del LMS (`openedx-course-payments`) o el CMS (`campus-cms`), ya registrados en `plataforma-equipo` | `make update` |
 | Solo Campus (`front-campus`), ya registrado en `plataforma-equipo` | `git pull && git submodule update --init --recursive`, y reinicia `make front` |
 | Alguien subió directo a un submódulo (`front-campus`, `campus-cms` o el plugin) | Ver la sección siguiente: `make update` no lo trae solo |
-| `tutor-plugins/campusmenu.py` (el menú en Open edX) | `make update` y luego `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev restart mfe"` |
+| `tutor-plugins/campusmenu.py` (el menú en Open edX) | `make update` y luego `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev start -d mfe"` |
 | No sé qué cambió | `make update` (siempre es seguro, solo tarda más) |
 
 `make update` hace todo en orden: `git pull`, actualiza los submódulos, aplica configuración y plugins, reconstruye las imágenes de Open edX y del CMS, corre las migraciones e inicializa lo que falte (base de datos y cuenta de servicio del CMS), y reinicia. Apaga la plataforma mientras construye, así que tarda unos minutos. No reconstruye la imagen de los MFE (el menú): eso va aparte, ver la tabla.
@@ -215,7 +217,7 @@ Con la plataforma encendida (`make start`) y Campus corriendo (`make front`):
 | Dependencias del plugin (`setup.py` o `pyproject.toml`) | `make update` |
 | El archivo de Tutor del plugin (`tutor/coursepayments.py`) | `make config` y luego `make restart` |
 | El archivo de Tutor del CMS (`src/campus-cms/tutor/campuscms.py`) | `make config` (recrea el contenedor del CMS) |
-| El menú de Campus en Open edX (`tutor-plugins/campusmenu.py`) | `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev restart mfe"` |
+| El menú de Campus en Open edX (`tutor-plugins/campusmenu.py`) | `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev start -d mfe"` |
 | Código Python del CMS (`campus-cms`) | Nada, se recarga solo |
 | Modelos del CMS (hay una migración nueva) | `make tutor ARGS="dev exec campus-cms python manage.py migrate"` |
 | Dependencias del CMS (`requirements.txt` de `campus-cms`) | `make update` |
@@ -361,7 +363,7 @@ Para ver los logs del CMS: `make tutor ARGS="dev logs -f --tail=100 campus-cms"`
 | `/admin` dice "Esta sección es solo para contadores" | Tu usuario no tiene el rol en el CMS: `make tutor ARGS="dev exec campus-cms python manage.py contador <usuario>"` |
 | Pagué y la página se queda en "Estamos activando tu acceso" | El pago llegó pero Open edX no dio el acceso. En `/admin/ventas`, filtra por acceso "Error en Open edX", lee el motivo y usa "Reintentar" (o corre `reconcile_orders`). Si no llega nada a `/admin/ventas`, revisa que `make stripe` esté corriendo |
 | Un curso no aparece en Campus | Solo aparecen los cursos creados desde `/admin/cursos` y puestos a la venta; los creados directo en Studio no |
-| El menú de Open edX no cambia | Falta reconstruir la imagen de los MFE: `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev restart mfe"` |
+| El menú de Open edX no cambia | Falta reconstruir la imagen de los MFE: `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev start -d mfe"` |
 
 ---
 

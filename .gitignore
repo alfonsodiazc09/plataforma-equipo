@@ -13,3 +13,6 @@ __pycache__/
 
 # Copias locales de MFEs de Open edX para probar cambios (no son parte de la plataforma)
 src/frontend-app-*/
+
+# Intellij
+.idea

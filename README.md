@@ -17,7 +17,6 @@ Direcciones:
 - LMS: http://local.openedx.io:8000
 - Studio: http://studio.local.openedx.io:8001
 - Campus: http://www.local.openedx.io:3000
-- Administración de Campus (contadores): http://www.local.openedx.io:3000/admin
 - CMS (API): http://campus-cms.local.openedx.io:8010/api/health/
 
 ## Ramas
@@ -36,13 +35,14 @@ En `dev`, este repo apunta al `dev` de cada submódulo, y `.gitmodules` les pone
 
 | Quién | Dónde | Qué hace |
 | --- | --- | --- |
-| Contador | Campus → `/admin` | Crea el curso (el CMS lo da de alta en Open edX con sus autores), le pone precio e imagen, lo pone a la venta y ve las ventas |
-| Autor | Studio | Arma el contenido del curso que el contador creó (tiene rol de instructor en él) |
+| Contador | Campus → `/admin` | Crea el curso o toma uno que ya existe en Open edX (el CMS lo da de alta con sus autores), le pone precio e imagen, lo pone a la venta y ve las ventas |
+| Autor | Campus → `/admin` → *Contenido*, o Studio | Arma el temario: módulos, lecciones, videos y evaluaciones (tiene rol de instructor en el curso) |
 | Comprador | Campus | Compra con Stripe; el CMS recibe el pago y lo inscribe en Open edX |
 | Alumno | Open edX (MFE de aprendizaje) | Toma el curso; solo entra si lo pagó |
 
 - **El CMS (`campus-cms`) es la fuente de verdad de lo comercial:** qué cursos se venden, precios, imágenes, descripciones, órdenes y pagos. **Open edX** lo es del contenido, los usuarios, las inscripciones y el progreso. Se enlazan por la clave del curso (`course-v1:Campus+CODIGO+PERIODO`).
-- **Un curso creado directo en Studio no aparece en Campus ni se puede vender:** los cursos se crean desde `/admin/cursos`.
+- **Un curso creado directo en Studio no aparece en Campus ni se puede vender** hasta que lo tomas en `/admin/cursos/nuevo` → *Tomar un curso de Open edX* (debe ser de la organización del CMS, `Campus`).
+- **El contenido vive en Open edX** aunque se edite desde Campus: la pestaña *Contenido* llama a Studio con tu usuario, así que solo puedes editar los cursos donde eres autor (o si eres staff). Los videos que subes se guardan en el disco de Campus (`src/front-campus/.data/videos`).
 - **El plugin del LMS (`openedx-course-payments`)** solo deja entrar a quien pagó (o al equipo del curso) y manda las páginas "About" del LMS a Campus.
 - **Quién es contador** lo decide el CMS, no Open edX. Ser staff de Open edX no da acceso a `/admin`; el rol se da con `make tutor ARGS="dev exec campus-cms python manage.py contador <usuario>"`.
 
@@ -110,6 +110,7 @@ Abre Docker Desktop y espera a que diga *Running*. Luego:
 ```bash
 make setup
 make admin USER_NAME=admin EMAIL=tu@correo.com
+make contador USER_NAME=admin
 ```
 
 `make setup` tarda bastante la primera vez porque descarga y construye las imágenes (también la del CMS) y prepara la base de datos y la cuenta de servicio del CMS. `make admin` te pide la contraseña del administrador.
@@ -145,7 +146,11 @@ make stripe
 
 Copia el `whsec_...` que aparece, pégalo en `CAMPUS_CMS_STRIPE_WEBHOOK_SECRET` dentro de `.env` y corre `make config`. Solo se repite si el `whsec_` cambia. Los pagos los recibe el CMS (`campus-cms`).
 
-Listo: abre http://www.local.openedx.io:3000.
+Listo: abre http://www.local.openedx.io:3000. Para vender un curso entra a http://www.local.openedx.io:3000/admin con tu usuario contador: crea el curso, ponle precio e imagen, créalo en Open edX y ponlo a la venta. Aparece en el catálogo y se compra con la tarjeta de prueba `4242 4242 4242 4242`.
+
+### 1.7 Ya tenía la plataforma instalada antes del CMS
+
+Corre `make update` (construye el CMS, crea su base y su cuenta de servicio). En tu `.env`, las llaves de Stripe ahora se llaman `CAMPUS_CMS_STRIPE_SECRET_KEY` y `CAMPUS_CMS_STRIPE_WEBHOOK_SECRET` (antes `COURSE_PAYMENTS_STRIPE_...`): cámbiales el nombre, corre `make config` y luego `make contador USER_NAME=<tu usuario>`.
 
 ---
 
@@ -184,6 +189,9 @@ Al terminar: `Ctrl+C` en las terminales de `make front` y `make stripe`, y luego
 
 ### Alguien subió cambios directo a un submódulo (`front-campus`, `campus-cms` o el plugin)
 
+**`make update` NO trae esos cambios por sí solo.** Este repo guarda en qué commit está cada submódulo, y `make update` deja cada uno en ese commit guardado. Si alguien abre solo el repo `front-campus`, `campus-cms` u `openedx-course-payments` y hace push ahí, `plataforma-equipo` sigue apuntando al commit anterior.
+
+Los tres submódulos siguen la rama `dev` de su repo (`branch = dev` en `.gitmodules`).
 **`make update` NO trae esos cambios por sí solo.** Este repo guarda en qué commit está cada submódulo, y `make update` deja cada uno en ese commit guardado. Si alguien hace push solo en el repo de `front-campus`, `campus-cms` u `openedx-course-payments`, `plataforma-equipo` sigue apuntando al commit anterior.
 
 Para que el equipo reciba el cambio, **quien lo subió** (o cualquiera) actualiza el commit guardado en `plataforma-equipo`:
@@ -216,11 +224,11 @@ Con la plataforma encendida (`make start`) y Campus corriendo (`make front`):
 | Modelos del plugin (hay una migración nueva) | `make tutor ARGS="dev exec lms ./manage.py lms migrate"` |
 | Dependencias del plugin (`setup.py` o `pyproject.toml`) | `make update` |
 | El archivo de Tutor del plugin (`tutor/coursepayments.py`) | `make config` y luego `make restart` |
-| El archivo de Tutor del CMS (`src/campus-cms/tutor/campuscms.py`) | `make config` (recrea el contenedor del CMS) |
 | El menú de Campus en Open edX (`tutor-plugins/campusmenu.py`) | `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev start -d mfe"` |
 | Código Python del CMS (`campus-cms`) | Nada, se recarga solo |
 | Modelos del CMS (hay una migración nueva) | `make tutor ARGS="dev exec campus-cms python manage.py migrate"` |
-| Dependencias del CMS (`requirements.txt` de `campus-cms`) | `make update` |
+| Dependencias del CMS (`requirements.txt` o `Dockerfile` de `campus-cms`) | `make update` |
+| El archivo de Tutor del CMS (`tutor/campuscms.py`) | `make config`; si agrega tareas de inicio (`CLI_DO_INIT_TASKS`), `make update` |
 | `config/tutor.env` o `.env` | `make config` |
 | `config/plugins.txt`, `config/mounts.txt`, `tutor-plugins/` o `requirements.txt` | `make update` |
 
@@ -304,6 +312,45 @@ Así se agregó `openedx-course-payments`; para otro son los mismos pasos. Convi
    git push
    ```
 
+### Servicio propio en su propio contenedor (Django aparte, como `campus-cms`)
+
+Así se agregó `campus-cms`. A diferencia del plugin del LMS, no se monta dentro de Open edX: es otro contenedor de `tutor dev` con su propia base en el MySQL de Tutor. Todo lo define el archivo de Tutor que vive en su repo (`tutor/campuscms.py`).
+
+1. **El código.** Agrega el repo como submódulo y que siga la rama del equipo:
+
+   ```bash
+   git submodule add -b dev https://github.com/TU_ORG/mi-servicio.git src/mi-servicio
+   ```
+
+2. **El archivo de Tutor.** El repo trae un `Dockerfile` y un plugin de Tutor que define:
+   - el contenedor en `local-docker-compose-dev-services` (con `build` apuntando al repo y el repo montado, así el código se recarga solo) y su copia para tareas en `dev-docker-compose-jobs-services`;
+   - su configuración en `CONFIG_DEFAULTS` (y los secretos generados una vez por máquina en `CONFIG_UNIQUE`);
+   - sus tareas de `tutor dev do init` en `CLI_DO_INIT_TASKS`: crear la base de MySQL, la cuenta de servicio en el LMS y correr `migrate`.
+
+   Enlázalo en `tutor-plugins/` para que se active:
+
+   ```bash
+   ln -s ../src/mi-servicio/tutor/miservicio.py tutor-plugins/miservicio.py
+   ```
+
+   **No** va en `config/mounts.txt`: ese archivo es solo para código que corre dentro del LMS.
+
+3. **Los scripts de este repo.** Si el servicio tiene que reconstruirse o recrearse, agrégalo como se hizo con `campus-cms`:
+   - `scripts/update.sh`: `"$TUTOR" dev dc build mi-servicio` (instala sus dependencias nuevas);
+   - `scripts/config.sh`: `"$TUTOR" dev start -d mi-servicio` (recibe la configuración como variables del contenedor, así que hay que recrearlo);
+   - `scripts/backup.sh` y `scripts/restore.sh`: su base de MySQL;
+   - `Makefile`: `restart` y, si sirve, atajos como `make cms-logs`.
+
+   Sus llaves (Stripe, etc.) van en `.env` con el nombre de su configuración (`CAMPUS_CMS_STRIPE_SECRET_KEY`), y lo que no es secreto en `config/tutor.env`.
+
+4. **Aplica y comparte.** `make update` y sube todo:
+
+   ```bash
+   git add .gitmodules src/mi-servicio tutor-plugins/ scripts/ Makefile README.md
+   git commit -m "Agrega mi-servicio"
+   git push
+   ```
+
 ### Quitar un plugin
 
 1. Borra su línea de `config/plugins.txt`, su archivo de `tutor-plugins/` o su línea de `config/mounts.txt`.
@@ -313,7 +360,36 @@ Si además era un submódulo que ya no se usa: `git rm src/mi-plugin` y commit.
 
 ---
 
-## 7. Todos los comandos
+## 7. El CMS y el área de administración
+
+| Para qué | Comando |
+| --- | --- |
+| Dar o quitar el rol Contador (entra a `/admin` de Campus) | `make contador USER_NAME=usuario` / `make contador USER_NAME=usuario REMOVE=1` |
+| Ver los errores del CMS | `make cms-logs` |
+| Revisar la conexión del CMS con Open edX | `make tutor ARGS="dev exec campus-cms python manage.py check_openedx"` |
+| Reintentar accesos que fallaron y cerrar pagos sin webhook | `make tutor ARGS="dev exec campus-cms python manage.py reconcile_orders"` (o el botón *Reintentar* en `/admin/ventas`) |
+| Correr las pruebas del CMS | `make tutor ARGS="dev exec campus-cms python manage.py test"` |
+| Admin de Django del CMS (para revisar datos) | `make tutor ARGS="dev exec campus-cms python manage.py createsuperuser"` y http://campus-cms.local.openedx.io:8010/admin/ |
+
+Nadie tiene contraseña en el CMS: se entra con el usuario de Open edX. El usuario contador inicia sesión en el LMS y Campus llama al CMS con ese login. El rol se puede dar antes de que la persona entre por primera vez.
+
+El CMS habla con Open edX con una cuenta de servicio (`campus_cms_worker`) que crea `make setup` / `make update`. Si la borras o cambias el `CAMPUS_CMS_OAUTH2_CLIENT_SECRET`, corre `make update` para volver a crearla.
+
+### Crear un curso y armar su contenido
+
+1. En `/admin/cursos/nuevo` elige **Crear un curso nuevo** (o **Tomar un curso de Open edX** para uno que ya existe en Studio; conserva su contenido y alumnos). Deja tu usuario en *Autores*: así Studio te deja editar el contenido. Al guardar, el curso se crea en Open edX (tarda unos segundos) y se abre su pestaña *Contenido*.
+2. En la pestaña *Contenido* agrega **módulos** y, dentro, **lecciones**. En cada lección:
+   - **Videos:** arrástralos (MP4, WebM u Ogg, hasta 2 GB) o pega un enlace de YouTube o de un archivo de video.
+   - **Evaluaciones:** opción múltiple, casillas, lista desplegable, respuesta numérica y respuesta de texto se escriben ahí mismo (pregunta, respuestas, explicación, puntos, intentos y cuándo se muestra la respuesta). Arrastrar y soltar, respuesta abierta, expresión matemática, zona en imagen y evaluación con Python se agregan ahí y se configuran con *Editar en Studio*.
+   - **Calificación:** elige si la lección cuenta para la nota (Tarea, Laboratorio, Examen parcial, Examen final; los tipos y pesos se definen en Studio → Calificación) y su fecha límite.
+3. Pulsa **Publicar cambios** (arriba, junto al nombre del curso): hasta entonces los alumnos no ven lo nuevo.
+4. En *Información* sube la portada y escribe la descripción; en *Precio y venta* ponle precio y pulsa **Poner a la venta**.
+
+Los videos subidos solo se ven mientras `make front` está corriendo (los sirve Campus) y entran en `make backup`.
+
+---
+
+## 8. Todos los comandos
 
 | Comando | Para qué |
 | --- | --- |
@@ -321,14 +397,16 @@ Si además era un submódulo que ya no se usa: `git rm src/mi-plugin` y commit.
 | `make setup` | Instalar desde cero (primera vez) |
 | `make update` | Traer y aplicar los cambios del equipo |
 | `make start` / `make stop` | Encender / apagar la plataforma |
-| `make restart` | Reiniciar LMS y Studio |
+| `make restart` | Reiniciar LMS, Studio y el CMS |
 | `make config` | Aplicar cambios de `config/tutor.env` o `.env` |
 | `make front` | Levantar Campus |
 | `make stripe` | Recibir en el CMS los webhooks de prueba de Stripe |
 | `make logs` | Ver los errores del LMS (`Ctrl+C` para salir) |
+| `make cms-logs` | Ver los errores del CMS (`Ctrl+C` para salir) |
+| `make contador USER_NAME=...` | Dar el rol Contador (`REMOVE=1` para quitarlo) |
 | `make shell` | Consola de Django del LMS |
 | `make admin USER_NAME=... EMAIL=...` | Crear un superusuario |
-| `make backup` / `make restore BACKUP=backups/...` | Respaldar / restaurar usuarios y cursos |
+| `make backup` / `make restore BACKUP=backups/...` | Respaldar / restaurar usuarios, cursos, el CMS (cursos a la venta y ventas) y los videos subidos |
 | `make doctor` | Ver versiones y estado para comparar con otra máquina |
 | `make tutor ARGS="..."` | Cualquier comando de Tutor de este proyecto |
 
@@ -347,7 +425,7 @@ Para ver los logs del CMS: `make tutor ARGS="dev logs -f --tail=100 campus-cms"`
 
 ---
 
-## 8. Problemas comunes
+## 9. Problemas comunes
 
 | Síntoma | Solución |
 | --- | --- |
@@ -362,16 +440,19 @@ Para ver los logs del CMS: `make tutor ARGS="dev logs -f --tail=100 campus-cms"`
 | `/admin` dice "La administración no está disponible" | El CMS no responde. Revisa http://campus-cms.local.openedx.io:8010/api/health/ y los logs del CMS; normalmente basta `make tutor ARGS="dev restart campus-cms"` |
 | `/admin` dice "Esta sección es solo para contadores" | Tu usuario no tiene el rol en el CMS: `make tutor ARGS="dev exec campus-cms python manage.py contador <usuario>"` |
 | Pagué y la página se queda en "Estamos activando tu acceso" | El pago llegó pero Open edX no dio el acceso. En `/admin/ventas`, filtra por acceso "Error en Open edX", lee el motivo y usa "Reintentar" (o corre `reconcile_orders`). Si no llega nada a `/admin/ventas`, revisa que `make stripe` esté corriendo |
-| Un curso no aparece en Campus | Solo aparecen los cursos creados desde `/admin/cursos` y puestos a la venta; los creados directo en Studio no |
+| Un curso no aparece en Campus | Solo aparecen los cursos del CMS puestos a la venta. Uno creado directo en Studio se toma en `/admin/cursos/nuevo` → *Tomar un curso de Open edX* |
+| *Contenido* dice "Tu usuario no puede editar este curso en Open edX" | No eres autor del curso. Agrégate en Studio → Configuración → Equipo del curso (lo hace alguien del equipo o un staff) |
+| Al crear el curso dice "Open edX no creó el curso" | Studio tardó o falló. En la página del curso, pestaña *Precio y venta*, pulsa *Reintentar creación*: no se duplica |
+| Un video subido no se reproduce | Los sirve Campus: revisa que `make front` esté corriendo |
 | El menú de Open edX no cambia | Falta reconstruir la imagen de los MFE: `make tutor ARGS="images build mfe"` y `make tutor ARGS="dev start -d mfe"` |
 
 ---
 
-## 9. Otros temas
+## 10. Otros temas
 
 **Un proyecto a la vez.** Cada repo guarda su Tutor en `.tutor/`, así que los proyectos no se mezclan, pero usan los mismos puertos. Para cambiar: `make stop` en uno y `make start` en el otro.
 
-**Pasar datos a otra persona.** Un curso: Studio → Herramientas → Exportar, y el otro lo importa. Todo (usuarios, cursos, progreso): `make backup`, comparte la carpeta de `backups/` y el otro corre `make restore BACKUP=backups/...`.
+**Pasar datos a otra persona.** Un curso: Studio → Herramientas → Exportar, y el otro lo importa (pero no queda a la venta: eso vive en el CMS). Todo (usuarios, cursos, progreso, del CMS los cursos a la venta, precios y ventas, y los videos subidos): `make backup`, comparte la carpeta de `backups/` y el otro corre `make restore BACKUP=backups/...`.
 
 **Traer una instalación vieja de `~/.local/share/tutor`:**
 

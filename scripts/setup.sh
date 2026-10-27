@@ -30,4 +30,5 @@ apply_mounts
 
 echo
 echo "Listo. LMS: http://local.openedx.io:8000  Studio: http://studio.local.openedx.io:8001"
-echo "Crea tu admin con: make admin"
+echo "CMS: http://campus-cms.local.openedx.io:8010/api/health/"
+echo "Crea tu admin con: make admin, y dale acceso a /admin de Campus con: make contador USER_NAME=admin"

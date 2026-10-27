@@ -17,11 +17,17 @@ start: ## Enciende la plataforma
 stop: ## Apaga la plataforma
 	@source scripts/common.sh && "$$TUTOR" dev stop
 
-restart: ## Reinicia el LMS y Studio (tras cambiar código montado)
-	@source scripts/common.sh && "$$TUTOR" dev restart lms cms
+restart: ## Reinicia el LMS, Studio y el CMS (tras cambiar código montado)
+	@source scripts/common.sh && "$$TUTOR" dev restart lms cms campus-cms
 
 logs: ## Muestra los logs del LMS
 	@source scripts/common.sh && "$$TUTOR" dev logs -f --tail=100 lms
+
+cms-logs: ## Muestra los logs del CMS (campus-cms)
+	@source scripts/common.sh && "$$TUTOR" dev logs -f --tail=100 campus-cms
+
+contador: ## Da el rol Contador (acceso a /admin): make contador USER_NAME=usuario [REMOVE=1]
+	@source scripts/common.sh && "$$TUTOR" dev exec campus-cms python manage.py contador $(or $(USER_NAME),$(error Falta USER_NAME=usuario)) $(if $(REMOVE),--remove)
 
 shell: ## Abre una consola de Django en el LMS
 	@source scripts/common.sh && "$$TUTOR" dev run lms ./manage.py lms shell
@@ -32,7 +38,7 @@ admin: ## Crea un superusuario: make admin USER_NAME=admin EMAIL=tu@correo.com
 tutor: ## Ejecuta cualquier comando de Tutor de este proyecto: make tutor ARGS="config printvalue LMS_HOST"
 	@source scripts/common.sh && "$$TUTOR" $(ARGS)
 
-backup: ## Respalda usuarios y cursos en backups/
+backup: ## Respalda usuarios, cursos, el CMS y los videos en backups/
 	@scripts/backup.sh
 
 restore: ## Restaura un respaldo: make restore BACKUP=backups/...
@@ -41,7 +47,7 @@ restore: ## Restaura un respaldo: make restore BACKUP=backups/...
 doctor: ## Muestra versiones y estado para comparar con el equipo
 	@scripts/doctor.sh
 
-config: ## Aplica cambios de config/tutor.env o .env y reinicia el LMS
+config: ## Aplica cambios de config/tutor.env o .env y reinicia el LMS y el CMS
 	@scripts/config.sh
 
 front: ## Levanta el sitio público (Nuxt) en http://www.local.openedx.io:3000
@@ -50,4 +56,4 @@ front: ## Levanta el sitio público (Nuxt) en http://www.local.openedx.io:3000
 stripe: ## Reenvía los webhooks de prueba de Stripe al CMS local
 	@scripts/stripe.sh
 
-.PHONY: help setup update start stop restart logs shell admin tutor backup restore doctor config front stripe
+.PHONY: help setup update start stop restart logs cms-logs contador shell admin tutor backup restore doctor config front stripe
